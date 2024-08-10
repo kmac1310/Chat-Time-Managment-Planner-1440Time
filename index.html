@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1440Time Management Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        #time1440, #taskTimer {
+            font-size: 2em;
+            margin: 10px 0;
+        }
+        #standardTime {
+            font-size: 1em;
+            color: #666;
+        }
+        input, button {
+            margin: 5px;
+            padding: 5px;
+        }
+        #taskList {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .task {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>1440Time Management Tool</h1>
+        <div id="time1440">1440 Minutes Remaining</div>
+        <div id="standardTime"></div>
+        <div id="taskTimer">No active task</div>
+        <input type="text" id="taskName" placeholder="Task Name">
+        <input type="number" id="taskDuration" placeholder="Duration (minutes)">
+        <button onclick="addTask()">Add Task</button>
+        <div id="taskList"></div>
+    </div>
+    <script>
+        let tasks = [];
+        let currentTaskIndex = -1;
+
+        function updateTime() {
+            const now = new Date();
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+            const minutesLeft = Math.floor((midnight - now) / 60000);
+            
+            document.getElementById('time1440').textContent = `${minutesLeft} Minutes Remaining`;
+            document.getElementById('standardTime').textContent = now.toLocaleTimeString();
+            
+            updateCurrentTask(now);
+        }
+
+        function updateCurrentTask(now) {
+            if (currentTaskIndex >= 0 && currentTaskIndex < tasks.length) {
+                const task = tasks[currentTaskIndex];
+                const taskTimeLeft = Math.max(0, Math.floor((task.endTime - now) / 1000));
+                if (taskTimeLeft > 0) {
+                    const minutes = Math.floor(taskTimeLeft / 60);
+                    const seconds = taskTimeLeft % 60;
+                    document.getElementById('taskTimer').textContent = 
+                        `${task.name}: ${minutes}m ${seconds}s left`;
+                } else {
+                    document.getElementById('taskTimer').textContent = "Task Completed!";
+                    currentTaskIndex++;
+                    if (currentTaskIndex < tasks.length) {
+                        startNextTask(now);
+                    } else {
+                        setTimeout(() => {
+                            document.getElementById('taskTimer').textContent = "All tasks completed!";
+                        }, 3000);
+                    }
+                }
+            } else {
+                document.getElementById('taskTimer').textContent = "No active task";
+            }
+        }
+
+        function addTask() {
+            const taskName = document.getElementById('taskName').value;
+            const duration = parseInt(document.getElementById('taskDuration').value);
+            if (!taskName || isNaN(duration) || duration <= 0) {
+                alert("Please enter a valid task name and duration.");
+                return;
+            }
+            
+            const now = new Date();
+            let startTime = now;
+            if (tasks.length > 0) {
+                const lastTask = tasks[tasks.length - 1];
+                startTime = new Date(Math.max(now, lastTask.endTime));
+            }
+            const endTime = new Date(startTime.getTime() + duration * 60000);
+            
+            tasks.push({ 
+                name: taskName, 
+                duration: duration, 
+                startTime: startTime,
+                endTime: endTime
+            });
+            
+            document.getElementById('taskName').value = '';
+            document.getElementById('taskDuration').value = '';
+            
+            if (currentTaskIndex === -1) {
+                currentTaskIndex = 0;
+                tasks[currentTaskIndex].startTime = now;
+                tasks[currentTaskIndex].endTime = new Date(now.getTime() + duration * 60000);
+            }
+            
+            updateTaskList();
+        }
+
+        function startNextTask(now) {
+            const task = tasks[currentTaskIndex];
+            task.startTime = now;
+            task.endTime = new Date(now.getTime() + task.duration * 60000);
+        }
+
+        function updateTaskList() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '<h2>Task List:</h2>';
+            tasks.forEach((task, index) => {
+                const taskElement = document.createElement('div');
+                taskElement.className = 'task';
+                const startTime = task.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const endTime = task.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const midnight = new Date(task.endTime.getFullYear(), task.endTime.getMonth(), task.endTime.getDate() + 1, 0, 0, 0);
+                const minutesLeftAfterTask = Math.floor((midnight - task.endTime) / 60000);
+                taskElement.textContent = `${index + 1}. ${task.name} (${task.duration} minutes) - 
+                    Start: ${startTime}, End: ${endTime}. 
+                    ${minutesLeftAfterTask} minutes left in the day after this task.`;
+                taskList.appendChild(taskElement);
+            });
+        }
+
+        // Update time every second
+        setInterval(updateTime, 1000);
+        // Initial update
+        updateTime();
+    </script>
+</body>
+</html>
